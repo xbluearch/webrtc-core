@@ -216,7 +216,7 @@ impl MediaRouter {
             let header = pkt.build_rewrite_header(sub.rewrite_ssrc, seq_delta, ts_delta);
             let transport_cc = pkt.get_extension::<crate::rtp::TransportCc>(map);
             let payload_range = pkt.payload_offset..(pkt.payload_offset + pkt.payload_len);
-            let mut op = OutgoingPacket { header, payload: buf.clone(), payload_range: payload_range.clone(), dest_ssrc: sub.rewrite_ssrc, transport_cc: transport_cc };
+            let op = OutgoingPacket { header, payload: buf.clone(), payload_range: payload_range.clone(), dest_ssrc: sub.rewrite_ssrc, transport_cc: transport_cc };
             if let Some(twcc) = transport_cc {
                 if let Some(cb) = &pubstate.feedback_cb { cb.on_twcc(pub_ssrc, twcc); }
                 if let Some(s) = &pubstate.feedback_sender { let _ = s.try_send((pub_ssrc, twcc)); }
