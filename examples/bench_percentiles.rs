@@ -2,7 +2,7 @@ use sfu_core::{MediaRouter, OutgoingPacket};
 use bytes::Bytes;
 use smallvec::SmallVec;
 use std::sync::Arc;
-use std::time::{Instant, Duration};
+use std::time::Instant;
 
 fn run_collect(n: u32, iters: usize) -> Vec<f64> {
     let router = MediaRouter::new();

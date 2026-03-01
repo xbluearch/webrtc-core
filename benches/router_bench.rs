@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::time::Duration;
 use sfu_core::{MediaRouter, OutgoingPacket};
 use bytes::Bytes;
