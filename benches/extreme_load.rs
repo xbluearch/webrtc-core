@@ -7,7 +7,8 @@ use smallvec::SmallVec;
 
 #[inline]
 fn try_rdtsc() -> Option<u64> {
-    #[cfg(target_arch = "x86_64")]
+    // Only attempt runtime detection on non-MSVC x86_64 targets (CI uses Linux).
+    #[cfg(all(target_arch = "x86_64", not(target_env = "msvc")))]
     {
         if is_x86_feature_detected!("rdtscp") {
             unsafe {
@@ -19,7 +20,7 @@ fn try_rdtsc() -> Option<u64> {
         }
         None
     }
-    #[cfg(not(target_arch = "x86_64"))]
+    #[cfg(not(all(target_arch = "x86_64", not(target_env = "msvc"))))]
     {
         None
     }
