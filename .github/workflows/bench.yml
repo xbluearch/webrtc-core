@@ -1,0 +1,42 @@
+name: Extreme-load Benchmark
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main, master ]
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust (Nightly)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+
+      - name: Ensure cargo cache and build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config build-essential
+
+      # Why Linux? (briefly in Spanish)
+      # ¿Por qué Linux es mejor para tu Benchmark?
+      # - rdtsc Invariante: Linux gestiona mucho mejor el contador de ciclos de la CPU sin interferencias del planificador de tareas de Windows.
+      # - Aislamiento de CPU: Con taskset, podemos asegurar que ningún otro proceso "moleste" al MediaRouter mientras medimos esos 0.2 ns.
+      # - Transparencia: Ejecutar en una instancia aislada de Ubuntu con aislamiento de core es una métrica reproducible y profesional.
+
+      - name: Run extreme-load example (pinned to core 0)
+        # Pin the process to CPU 0 with taskset for stable timing
+        run: |
+          cd sfu_core
+          # Use native CPU optimizations for maximum per-packet performance
+          export RUSTFLAGS='-C target-cpu=native'
+          echo 'Starting extreme-load benchmark (release, pinned to core 0)'
+          # Run the example; results will be printed to the job log
+          taskset -c 0 bash -lc 'cargo run --release --example extreme_load'
