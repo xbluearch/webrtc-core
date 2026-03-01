@@ -5,12 +5,25 @@ use std::hint::black_box;
 use sfu_core::{MediaRouter, OutgoingPacket};
 use smallvec::SmallVec;
 
-#[cfg(all(target_arch = "x86_64", target_feature = "rdtscp"))]
-fn rdtsc() -> u64 { unsafe { core::arch::x86_64::_rdtscp(&mut 0u32) } }
-#[cfg(all(target_arch = "x86_64", not(target_feature = "rdtscp")))]
-fn rdtsc() -> u64 { unsafe { core::arch::x86_64::_rdtsc() } }
-#[cfg(not(target_arch = "x86_64"))]
-fn rdtsc() -> u64 { 0 }
+#[inline]
+fn try_rdtsc() -> Option<u64> {
+    #[cfg(target_arch = "x86_64")]
+    {
+        if is_x86_feature_detected!("rdtscp") {
+            unsafe {
+                let mut aux: u32 = 0;
+                return Some(core::arch::x86_64::_rdtscp(&mut aux));
+            }
+        } else if is_x86_feature_detected!("rdtsc") {
+            unsafe { return Some(core::arch::x86_64::_rdtsc()); }
+        }
+        None
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        None
+    }
+}
 
 fn make_rtp(ssrc: u32, seq: u16, ts: u32, payload: &[u8]) -> Arc<Bytes> {
     let mut v = Vec::with_capacity(12 + payload.len());
@@ -35,7 +48,7 @@ fn run_load(subscribers: usize, iterations: usize) {
     // warm-up
     for _ in 0..1000 { let mut out = SmallVec::<[OutgoingPacket; 16]>::new(); let _ = router.route(pkt.clone(), &mut out); }
 
-    let start_cycles = rdtsc();
+    let start_cycles = try_rdtsc();
     let start = Instant::now();
     for i in 0..iterations {
         black_box({
@@ -46,16 +59,22 @@ fn run_load(subscribers: usize, iterations: usize) {
         if i % 1_000_000 == 0 { std::hint::black_box(i); }
     }
     let elapsed = start.elapsed();
-    let end_cycles = rdtsc();
-    let total_cycles = end_cycles.saturating_sub(start_cycles);
+    let end_cycles = try_rdtsc();
 
     let total_packets = iterations as f64;
     let secs = elapsed.as_secs_f64();
-    let cycles_per_packet = if total_packets > 0.0 { (total_cycles as f64) / total_packets } else { 0.0 };
-    let pps = total_packets / secs;
+    let pps = if secs > 0.0 { total_packets / secs } else { 0.0 };
 
-    println!("Subscribers: {} | Total Packets: {} | Total Time: {:?} | Cycles/Packet: {:.2} | Throughput (PPS): {:.2}",
-        subscribers, iterations, elapsed, cycles_per_packet, pps);
+    if let (Some(s), Some(e)) = (start_cycles, end_cycles) {
+        let total_cycles = e.saturating_sub(s);
+        let cycles_per_packet = if total_packets > 0.0 { (total_cycles as f64) / total_packets } else { 0.0 };
+        println!("Subscribers: {} | Total Packets: {} | Total Time: {:?} | Cycles/Packet: {:.2} | Throughput (PPS): {:.2}",
+            subscribers, iterations, elapsed, cycles_per_packet, pps);
+    } else {
+        let ns_per_packet = if total_packets > 0.0 { (secs * 1e9) / total_packets } else { 0.0 };
+        println!("Subscribers: {} | Total Packets: {} | Total Time: {:?} | ns/Packet: {:.2} | Throughput (PPS): {:.2}",
+            subscribers, iterations, elapsed, ns_per_packet, pps);
+    }
 }
 
 fn main() {
