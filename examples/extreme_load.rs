@@ -59,7 +59,8 @@ fn run_load(subscribers: usize, iterations: usize) {
 }
 
 fn main() {
-    let scenarios = vec![(1usize, 10_000_000usize), (100, 5_000_000), (1000, 1_000_000)];
+    // Use a moderate scenario so CI completes in reasonable time
+    let scenarios = vec![(1usize, 5_000_000usize), (100, 2_000_000), (1000, 500_000)];
     for (subs, iters) in scenarios {
         println!("-- Running scenario: {} subscribers, {} iterations --", subs, iters);
         run_load(subs, iters);
