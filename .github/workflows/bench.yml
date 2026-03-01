@@ -34,7 +34,6 @@ jobs:
       - name: Run extreme-load example (pinned to core 0)
         # Pin the process to CPU 0 with taskset for stable timing
         run: |
-          cd sfu_core
           # Use native CPU optimizations for maximum per-packet performance
           export RUSTFLAGS='-C target-cpu=native'
           echo 'Starting extreme-load benchmark (release, pinned to core 0)'
